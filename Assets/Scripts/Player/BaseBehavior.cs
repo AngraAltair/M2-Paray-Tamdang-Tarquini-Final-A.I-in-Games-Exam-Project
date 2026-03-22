@@ -1,16 +1,26 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class BaseBehavior : MonoBehaviour
 {
+    // Private References
     private static BaseBehavior instance;
-
-    private bool IsBaseAlive = true;
-    private float BaseHealth = 100f;
-    private float BaseUnits = 10f;
     private List<GameObject> SpawnedInUnits;
+    // private AIBehavior AIBehavior;
+
+    // Base Stats and Resources
+    public bool IsBaseAlive { get; set; } = true;
+    public float BaseHealth { get; set; } = 100f;
+    public float WoodResourceCount { get; set; } = 10f;
+    public float SteelResourceCount { get; set; } = 10f;
+    public float FoodResourceCount { get; set; } = 10f;
+    public float BaseUnits { get; set; } = 10f;
+
+    // Public References
     public GameObject UnitParent;
 
+    // Public Class Initializer
     public static BaseBehavior Instance
     {
         get { return instance; }
@@ -27,11 +37,12 @@ public class BaseBehavior : MonoBehaviour
             instance = this;
         }
     }
+
     // Start is called before the first frame update
     void Start()
     {
         SpawnedInUnits = new List<GameObject>();
-
+        // AIBehavior = GetComponent<AIBehavior>();
 
         // BaseUnits = SpawnedUnits.Count;
     }
@@ -48,74 +59,80 @@ public class BaseBehavior : MonoBehaviour
         // }
     }
 
-    public void SendUnits(float unitsToSend)
+    public void SendUnits(int unitsToSend)
     {
-        // if (IsBaseAlive && BaseUnits >= unitsToSend)
-        // {
-        //     // BaseUnits -= unitsToSend;
-        //     Debug.Log("Sent " + unitsToSend + " units. Remaining: " + BaseUnits);
-
-        // Check what the player last clicked. This dictates the behavior to set the AI to.
-        // string lastClickedTag = ClickManager.Instance.GetLastClickedObjectTag();
-
-        // // If there are not enough units, spawn some before sending them to the target. If there are, just send them to the target.
-        // if (SpawnedInUnits.Count < unitsToSend)
-        // {
-        //     Debug.Log("Not enough units active. Spawning...");
-        //     SpawnUnits(SpawnedInUnits.Count - unitsToSend);
-        // }
-
-        // // If there are no active units, spawn some.
-        // if (SpawnedInUnits.Count == 0)
-        // {
-        //     Debug.Log("No units available to send. Spawning...");
-        //     SpawnUnits(unitsToSend);
-        // }
-
-        // foreach(Transform child in UnitParent.transform)
-        // {
-        //     SpawnedInUnits.Add(child.gameObject);
-        // }
-
-        // foreach(GameObject unit in SpawnedInUnits)
-        // {
-        //     Debug.Log("Setting behavior");
-        //     // if (lastClickedTag == "ResourceArea")
-        //     // {
-        //         unit.GetComponent<AIBehavior>().GatherResources(ClickManager.Instance.GetLastClickedPosition());
-        //     // }
-        //     // else
-        //     // {
-        //     //     unit.GetComponent<AIBehavior>().NavigateToTarget(ClickManager.Instance.GetLastClickedPosition());
-        //     // }
-        // }
-
-        // Let's start simple by just spawning units corresponding to the amount we have to send. Then we take from the number of existing units in SpawnedInUnits and set all their behaviors to a certain behavior.
-        SpawnUnits(unitsToSend);
-
-        foreach (Transform child in UnitParent.transform)
+        // If the base is alive and the units at the base are more than or equal to the units to send (there are units in base available to do the job.), send unit to job
+        if (IsBaseAlive && BaseUnits >= unitsToSend)
         {
-            // child.gameObject.GetComponent<AIBehavior>().NavigateToTarget(new Vector3(0,0,0));
-            // child.gameObject.GetComponent<AIBehavior>().DebugFunction();
-            // child.gameObject.GetComponent<AIBehavior>().DebugFunctionTargetPos(ClickManager.Instance.GetLastClickedPosition());
-            Vector3 targetPos = ClickManager.Instance.GetLastClickedPosition();
-            child.gameObject.GetComponent<AIBehavior>().NavigateToTarget(targetPos);
+            float ActiveAndIdleUnits = ReturnCurrentlyActiveAndIdleUnits();
+
+            // Prioritize sending active and idle units first if there are enough to cover the units to send.
+            if (ActiveAndIdleUnits > unitsToSend)
+            {
+                SetUnitBehavior(unitsToSend, "Gather");
+                GUIManager.Instance.SetResourceCountText();
+            }
+
+            // If there aren't enough active units, spawn remaining units (as long as base has enough to send.)
+            if (ActiveAndIdleUnits < unitsToSend)
+            {
+                float UnitsNeeded = unitsToSend - ActiveAndIdleUnits;
+                SpawnUnits(UnitsNeeded);
+                SetUnitBehavior(unitsToSend, "Gather");
+                GUIManager.Instance.SetResourceCountText();
+            }
         }
 
-        // }
-        // else
+        // Let's start simple by just spawning units corresponding to the amount we have to send. Then we take from the number of existing units in SpawnedInUnits and set all their behaviors to a certain behavior.
+        // SpawnUnits(unitsToSend);
+
+        // foreach (Transform child in UnitParent.transform)
         // {
-        //     Debug.Log("Not enough units to send or base is destroyed.");
+        //     Vector3 targetPos = ClickManager.Instance.GetLastClickedPosition();
+        //     child.gameObject.GetComponent<AIBehavior>().NavigateToTarget(targetPos);
         // }
     }
 
+    // Function for CREATING UNITS.
     public void SpawnUnits(float unitsToSpawn)
     {
         for (int i = 0; i < unitsToSpawn; i++)
         {
+            BaseUnits--;
             Instantiate(Resources.Load("Prefabs/Unit (DEBUG)"), transform.position, Quaternion.identity, UnitParent.transform);
         }
-        // BaseUnits -= unitsToSpawn;
-        // Debug.Log("Spawned " + unitsToSpawn + " units. Remaining: " + BaseUnits);
+    }
+
+    public void SetUnitBehavior(int UnitsNeeded, string behavior)
+    {
+        int totalChildren = UnitParent.transform.childCount;
+        int startIndex = totalChildren - UnitsNeeded;
+        
+        for (int i = startIndex; i < totalChildren; i++)
+        {
+            switch (behavior)
+                {
+                    case "Gather":
+                        UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().IsPerformingTask = true;
+                        UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().GatherResources(ClickManager.Instance.GetLastClickedPosition());
+                        break;
+                    default:
+                        break;
+                }
+        }
+    }
+
+    public float ReturnCurrentlyActiveAndIdleUnits()
+    {
+        float ActiveAndIdleUnits = 0f;
+        foreach (Transform child in UnitParent.transform)
+        {
+            AIBehavior AIBehavior = child.gameObject.GetComponent<AIBehavior>();
+            if (!AIBehavior.IsPerformingTask)
+            {
+                ActiveAndIdleUnits++;
+            }
+        }
+        return ActiveAndIdleUnits;
     }
 }

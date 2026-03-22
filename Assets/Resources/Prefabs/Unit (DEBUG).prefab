@@ -122,6 +122,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Health: 5
+  WalkSpeed: 40
+  StoppingDistance: 0
+  GatheringRate: 2
+  GatheringDurationInSeconds: 4
 --- !u!195 &1672151780793574931
 NavMeshAgent:
   m_ObjectHideFlags: 0
