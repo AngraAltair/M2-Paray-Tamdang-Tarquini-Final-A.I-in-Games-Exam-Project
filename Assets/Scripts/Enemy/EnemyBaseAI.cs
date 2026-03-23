@@ -1,9 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
+[RequireComponent(typeof(EnemyBaseManager))]
 public class EnemyBaseAI : MonoBehaviour
 {
-    private bool IsBaseAlive = true;
+    // private bool IsBaseAlive = true;
     private Coroutine SpawnUnitsCoroutine;
 
     public float UnitsPerSpawn = 4f;
@@ -32,7 +33,7 @@ public class EnemyBaseAI : MonoBehaviour
 
     IEnumerator SpawnUnits()
     {
-        while (IsBaseAlive)
+        while (GetComponent<EnemyBaseManager>().IsBaseAlive)
         {
             for (int i = 1; i <= UnitsPerSpawn; i++)
             {

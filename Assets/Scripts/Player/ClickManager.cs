@@ -10,6 +10,7 @@ public class ClickManager : MonoBehaviour
     public Camera mainCamera;
     private string LastClickedObjectTag;
     private Vector3 lastClickedPosition;
+    private GameObject LastClickedObject;
 
     void Awake()
     {
@@ -56,11 +57,21 @@ public class ClickManager : MonoBehaviour
                 if (hit.collider.CompareTag("ResourceArea"))
                 {
                     // Set the last clicked object tag and position for the BaseBehavior to reference when sending units. This is important for dictating their behavior.
+                    LastClickedObject = hit.collider.gameObject;
                     LastClickedObjectTag = hit.collider.tag;
                     lastClickedPosition = hit.transform.position;
                     Debug.Log("Resource area clicked: " + hit.collider.name);
                     GUIManager.Instance.ActivateUnitUI();
                     // You can add logic here to gather resources or interact with the resource area
+                }
+
+                if (hit.collider.CompareTag("EnemyBase"))
+                {
+                    LastClickedObject = hit.collider.gameObject;
+                    LastClickedObjectTag = hit.collider.tag;
+                    lastClickedPosition = hit.transform.position;
+                    Debug.Log("Enemy base clicked: " + hit.collider.name);
+                    GUIManager.Instance.ActivateUnitUI();
                 }
             }
         }
@@ -74,5 +85,10 @@ public class ClickManager : MonoBehaviour
     public Vector3 GetLastClickedPosition()
     {
         return lastClickedPosition;
+    }
+
+    public GameObject GetLastClickedObject()
+    {
+        return LastClickedObject;
     }
 }

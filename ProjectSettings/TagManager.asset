@@ -7,6 +7,7 @@ TagManager:
   - Clickable
   - Base
   - ResourceArea
+  - EnemyBase
   layers:
   - Default
   - TransparentFX

@@ -14,6 +14,10 @@ public class GUIManager : MonoBehaviour
     public GameObject UnitUI;
     public TMP_InputField unitInputField;
 
+    // [Header("Enemy Base UI References")]
+    // public GameObject EnemyBaseUI;
+    // public TMP_InputField SendToAttackInputField;
+
     [Header("Resource UI References")]
     public GameObject ResourceUI;
     public TMP_Text UnitCount;

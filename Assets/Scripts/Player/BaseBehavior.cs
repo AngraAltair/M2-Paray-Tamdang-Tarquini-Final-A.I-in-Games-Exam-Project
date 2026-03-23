@@ -41,10 +41,7 @@ public class BaseBehavior : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        SpawnedInUnits = new List<GameObject>();
-        // AIBehavior = GetComponent<AIBehavior>();
-
-        // BaseUnits = SpawnedUnits.Count;
+        // SpawnedInUnits = new List<GameObject>();
     }
 
     // Update is called once per frame
@@ -52,11 +49,8 @@ public class BaseBehavior : MonoBehaviour
     {
         Debug.Log("Units in Base:" + BaseUnits);
 
-        Debug.Log(SpawnedInUnits.Count);
-        // foreach(Transform child in UnitParent.transform)
-        // {
-        //     SpawnedUnits.Add(child.gameObject);
-        // }
+        // Debug.Log(SpawnedInUnits.Count);
+
     }
 
     public void SendUnits(int unitsToSend)
@@ -65,11 +59,12 @@ public class BaseBehavior : MonoBehaviour
         if (IsBaseAlive && BaseUnits >= unitsToSend)
         {
             float ActiveAndIdleUnits = ReturnCurrentlyActiveAndIdleUnits();
+            string behavior = ReturnBehavior();
 
             // Prioritize sending active and idle units first if there are enough to cover the units to send.
             if (ActiveAndIdleUnits > unitsToSend)
             {
-                SetUnitBehavior(unitsToSend, "Gather");
+                SetUnitBehavior(unitsToSend, behavior);
                 GUIManager.Instance.SetResourceCountText();
             }
 
@@ -78,7 +73,7 @@ public class BaseBehavior : MonoBehaviour
             {
                 float UnitsNeeded = unitsToSend - ActiveAndIdleUnits;
                 SpawnUnits(UnitsNeeded);
-                SetUnitBehavior(unitsToSend, "Gather");
+                SetUnitBehavior(unitsToSend, behavior);
                 GUIManager.Instance.SetResourceCountText();
             }
         }
@@ -103,20 +98,27 @@ public class BaseBehavior : MonoBehaviour
         }
     }
 
-    public void SetUnitBehavior(int UnitsNeeded, string behavior)
+    public void SetUnitBehavior(int UnitsNeeded, string behavior = null)
     {
         int totalChildren = UnitParent.transform.childCount;
         int startIndex = totalChildren - UnitsNeeded;
         
         for (int i = startIndex; i < totalChildren; i++)
         {
+            Transform child = UnitParent.transform.GetChild(i);
             switch (behavior)
                 {
                     case "Gather":
-                        UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().IsPerformingTask = true;
-                        UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().GatherResources(ClickManager.Instance.GetLastClickedPosition());
+                        child.GetComponent<AIBehavior>().IsPerformingTask = true;
+                        child.GetComponent<AIBehavior>().GatherResources(ClickManager.Instance.GetLastClickedPosition());
+                        break;
+                    case "Attack":
+                        child.GetComponent<AIBehavior>().IsPerformingTask = true;
+                        child.GetComponent<AIBehavior>().AttackEnemy(ClickManager.Instance.GetLastClickedPosition());
                         break;
                     default:
+                        // UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().IsPerformingTask = true;
+                        UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().NavigateToTarget(ClickManager.Instance.GetLastClickedPosition());
                         break;
                 }
         }
@@ -134,5 +136,16 @@ public class BaseBehavior : MonoBehaviour
             }
         }
         return ActiveAndIdleUnits;
+    }
+
+    public string ReturnBehavior()
+    {
+        string behavior = ClickManager.Instance.GetLastClickedObjectTag() switch
+        {
+            "ResourceArea" => "Gather",
+            "EnemyBase" => "Attack",
+            _ => null,
+        };
+        return behavior;
     }
 }
