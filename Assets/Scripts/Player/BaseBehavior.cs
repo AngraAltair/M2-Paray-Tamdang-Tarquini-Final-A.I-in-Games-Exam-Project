@@ -3,12 +3,9 @@ using UnityEngine;
 
 public class BaseBehavior : MonoBehaviour
 {
-    // Private References
     private static BaseBehavior instance;
     private List<GameObject> SpawnedInUnits;
-    // private AIBehavior AIBehavior;
 
-    // Base Stats and Resources
     public bool IsBaseAlive { get; set; } = true;
     public float BaseHealth { get; set; } = 100f;
     public float WoodResourceCount { get; set; } = 10f;
@@ -16,10 +13,8 @@ public class BaseBehavior : MonoBehaviour
     public float FoodResourceCount { get; set; } = 10f;
     public float BaseUnits { get; set; } = 10f;
 
-    // Public References
     public GameObject UnitParent;
 
-    // Public Class Initializer
     public static BaseBehavior Instance
     {
         get { return instance; }
@@ -37,58 +32,48 @@ public class BaseBehavior : MonoBehaviour
         }
     }
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        // SpawnedInUnits = new List<GameObject>();
-    }
+    void Start() { }
 
-    // Update is called once per frame
     void Update()
     {
         Debug.Log("Active and Idle Units: " + ReturnCurrentlyActiveAndIdleUnits());
-        // Debug.Log("Units in Base:" + BaseUnits);
-
-        // Debug.Log(SpawnedInUnits.Count);
-
     }
 
     public void SendUnits(int unitsToSend)
     {
-        // If the base is alive and the units at the base are more than or equal to the units to send (there are units in base available to do the job.), send unit to job
         if (IsBaseAlive && BaseUnits >= unitsToSend)
         {
-            float ActiveAndIdleUnits = ReturnCurrentlyActiveAndIdleUnits();
+            float activeAndIdleUnits = ReturnCurrentlyActiveAndIdleUnits();
             string behavior = ReturnBehavior();
 
-            // Prioritize sending active and idle units first if there are enough to cover the units to send.
-            if (ActiveAndIdleUnits > unitsToSend)
+            // BUG 2 FIX: Collect the actual idle unit GameObjects rather than relying on
+            // child index math. The old approach (startIndex = totalChildren - UnitsNeeded)
+            // was wrong whenever there was a mix of busy and idle units — it would pick the
+            // last N children by position, not by idle status, assigning tasks to units that
+            // were already mid-task or to the wrong newly-spawned units.
+            List<GameObject> idleUnits = GetIdleUnits();
+            int idleCount = idleUnits.Count;
+
+            if (idleCount >= unitsToSend)
             {
-                SetUnitBehavior(unitsToSend, behavior);
+                // Enough idle units exist — assign directly without spawning
+                AssignBehaviorToUnits(idleUnits, unitsToSend, behavior);
                 GUIManager.Instance.SetResourceCountText();
             }
-
-            // If there aren't enough active units, spawn remaining units (as long as base has enough to send.)
-            if (ActiveAndIdleUnits < unitsToSend)
+            else
             {
-                float UnitsNeeded = unitsToSend - ActiveAndIdleUnits;
-                SpawnUnits(UnitsNeeded);
-                SetUnitBehavior(unitsToSend, behavior);
+                // Not enough idle units — spawn the remainder first, then assign
+                int unitsNeeded = unitsToSend - idleCount;
+                SpawnUnits(unitsNeeded);
+
+                // Re-collect idle units (includes freshly spawned ones)
+                idleUnits = GetIdleUnits();
+                AssignBehaviorToUnits(idleUnits, unitsToSend, behavior);
                 GUIManager.Instance.SetResourceCountText();
             }
         }
-
-        // Let's start simple by just spawning units corresponding to the amount we have to send. Then we take from the number of existing units in SpawnedInUnits and set all their behaviors to a certain behavior.
-        // SpawnUnits(unitsToSend);
-
-        // foreach (Transform child in UnitParent.transform)
-        // {
-        //     Vector3 targetPos = ClickManager.Instance.GetLastClickedPosition();
-        //     child.gameObject.GetComponent<AIBehavior>().NavigateToTarget(targetPos);
-        // }
     }
 
-    // Function for CREATING UNITS.
     public void SpawnUnits(float unitsToSpawn)
     {
         for (int i = 0; i < unitsToSpawn; i++)
@@ -98,43 +83,72 @@ public class BaseBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Returns a list of all currently idle (not performing a task) units.
+    /// </summary>
+    private List<GameObject> GetIdleUnits()
+    {
+        List<GameObject> idle = new List<GameObject>();
+        foreach (Transform child in UnitParent.transform)
+        {
+            AIBehavior ai = child.gameObject.GetComponent<AIBehavior>();
+            if (ai != null && !ai.IsPerformingTask)
+            {
+                idle.Add(child.gameObject);
+            }
+        }
+        return idle;
+    }
+
+    /// <summary>
+    /// Assigns the given behavior to up to 'count' units from the provided list.
+    /// </summary>
+    private void AssignBehaviorToUnits(List<GameObject> units, int count, string behavior)
+    {
+        int assigned = 0;
+        foreach (GameObject unit in units)
+        {
+            if (assigned >= count) break;
+
+            AIBehavior ai = unit.GetComponent<AIBehavior>();
+            if (ai == null) continue;
+
+            ai.IsPerformingTask = true;
+            switch (behavior)
+            {
+                case "Gather":
+                    ai.GatherResources(ClickManager.Instance.GetLastClickedPosition());
+                    break;
+                case "Attack":
+                    ai.AttackBase(ClickManager.Instance.GetLastClickedPosition());
+                    break;
+                default:
+                    ai.NavigateToTarget(ClickManager.Instance.GetLastClickedPosition());
+                    break;
+            }
+            assigned++;
+        }
+    }
+
+    // Kept for backwards compatibility — used by GUIManager and elsewhere
     public void SetUnitBehavior(int UnitsNeeded, string behavior = null)
     {
-        int totalChildren = UnitParent.transform.childCount;
-        int startIndex = totalChildren - UnitsNeeded;
-        
-        for (int i = startIndex; i < totalChildren; i++)
-        {
-            Transform child = UnitParent.transform.GetChild(i);
-            switch (behavior)
-                {
-                    case "Gather":
-                        child.GetComponent<AIBehavior>().IsPerformingTask = true;
-                        child.GetComponent<AIBehavior>().GatherResources(ClickManager.Instance.GetLastClickedPosition());
-                        break;
-                    case "Attack":
-                        child.GetComponent<AIBehavior>().IsPerformingTask = true;
-                        child.GetComponent<AIBehavior>().AttackBase(ClickManager.Instance.GetLastClickedPosition());
-                        break;
-                    default:
-                        UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().NavigateToTarget(ClickManager.Instance.GetLastClickedPosition());
-                        break;
-                }
-        }
+        List<GameObject> idleUnits = GetIdleUnits();
+        AssignBehaviorToUnits(idleUnits, UnitsNeeded, behavior);
     }
 
     public float ReturnCurrentlyActiveAndIdleUnits()
     {
-        float ActiveAndIdleUnits = 0f;
+        float activeAndIdleUnits = 0f;
         foreach (Transform child in UnitParent.transform)
         {
-            AIBehavior AIBehavior = child.gameObject.GetComponent<AIBehavior>();
-            if (!AIBehavior.IsPerformingTask)
+            AIBehavior ai = child.gameObject.GetComponent<AIBehavior>();
+            if (ai != null && !ai.IsPerformingTask)
             {
-                ActiveAndIdleUnits++;
+                activeAndIdleUnits++;
             }
         }
-        return ActiveAndIdleUnits;
+        return activeAndIdleUnits;
     }
 
     public string ReturnBehavior()

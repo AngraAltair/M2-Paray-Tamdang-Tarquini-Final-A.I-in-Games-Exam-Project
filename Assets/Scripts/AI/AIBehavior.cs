@@ -1,5 +1,4 @@
 using System.Collections;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -9,18 +8,13 @@ public class AIBehavior : MonoBehaviour
     private NavMeshAgent agent;
     private AIAgression AIAgressionScript;
     private GameObject EnemyUnitTarget { get; set; }
-    // private GameObject[] EnemyUnitTargets;
 
     [Header("AI NavMesh Config")]
     public float Health = 5f;
-    // public float WalkSpeed = 60f;
-    // public float StoppingDistance = 5f;
     private GameObject HomeBase;
     private Vector3 HomeBasePosition;
 
     // Behavior Bools
-    // All bools ending with "Task" is for scheduling. This is what makes sure the AI heads over to the target first before the task logic triggers.
-    // All bools without "Task" are the flags used for actually triggering task logic.
     public bool IsPerformingTask { get; set; }
 
     public bool IsReturningHome { get; set; }
@@ -33,12 +27,10 @@ public class AIBehavior : MonoBehaviour
     private bool IsAttackingBaseTask { get; set; }
     private bool IsAttackingBaseCoroutineRunning { get; set; }
 
-    // Behavior bools specifically for attacking other AI units.
     public bool IsAggressive { get; set; }
     public bool IsAttackingEnemy { get; set; }
     private bool IsAttackingEnemyTask { get; set; }
     private Coroutine AttackEnemyCoroutine;
-
 
     private Coroutine ReturnHomeCoroutine;
 
@@ -59,13 +51,15 @@ public class AIBehavior : MonoBehaviour
     public float AttackRate = 3f;
     public float AttackRange = 30f;
 
-    // Start is called before the first frame update
+    // Coroutine guard booleans (prevent Update() from spawning duplicate coroutines each frame)
+    private bool IsGatheringCoroutineRunning { get; set; }
+    private bool IsReturningHomeCoroutineRunning { get; set; }
+    private bool IsAttackingEnemyCoroutineRunning { get; set; }
+
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         AIAgressionScript = GetComponentInChildren<AIAgression>();
-        // agent.speed = WalkSpeed;
-        // agent.stoppingDistance = StoppingDistance;
     }
 
     void Start()
@@ -74,128 +68,111 @@ public class AIBehavior : MonoBehaviour
         HomeBasePosition = HomeBase.transform.position;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        // Debug.Log("Update called on " + gameObject.name);
-        // Debug.Log("Is Attacking Base Task: " + IsAttackingBaseTask);
-        // Debug.Log("Was Attacking Base: " + wasAttackingBase);
-        // Debug.Log("AI Performing Task: " + IsPerformingTask);
-        // Debug.Log("Attack Base Coroutine running: " + IsAttackingBaseCoroutineRunning);
-
-        // RETURN HOME AFTER FINISHING A TASK, ONLY ADD TO BASE UNITS WHEN UNIT IS HOME.
-
-        // POSITION CHECK FOR GATHERING TASK so AI will start gathering when they ARRIVE at the target
-        if (IsGatheringTask && !IsAggressive && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+        // POSITION CHECK FOR GATHERING TASK
+        if (IsGatheringTask && !IsAggressive && !agent.pathPending
+            && agent.remainingDistance <= agent.stoppingDistance && !IsGatheringCoroutineRunning)
         {
             Debug.Log("AI arrived at destination. Starting gathering.");
             IsGathering = true;
-            IsGatheringTask = false; // Prevents re-triggering
+            IsGatheringTask = false;
 
-            if (GatheringCoroutine != null)
-            {
-                StopCoroutine(GatheringCoroutine);
-                GatheringCoroutine = StartCoroutine(GatherResourcesCoroutine());
-            }
+            if (GatheringCoroutine != null) StopCoroutine(GatheringCoroutine);
+            IsGatheringCoroutineRunning = true;
             GatheringCoroutine = StartCoroutine(GatherResourcesCoroutine());
         }
 
-        // POSITION CHECK FOR ATTACKING TASK
-        if (IsAttackingBaseTask && !IsAggressive && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance && ClickManager.Instance.GetLastClickedObject() != null)
+        // POSITION CHECK FOR ATTACKING BASE TASK
+        // BUG A FIX: Removed the !IsAggressive guard. If an enemy walked into aggro range
+        // right as a unit arrived at the base, IsAggressive=true used to block the attack
+        // coroutine from ever starting. Base attack takes priority on arrival.
+        if (IsAttackingBaseTask && !agent.pathPending
+            && agent.remainingDistance <= agent.stoppingDistance
+            && ClickManager.Instance.GetLastClickedObject() != null
+            && !IsAttackingBaseCoroutineRunning)
         {
-            Debug.Log("AI arrived at destination. Starting attack.");
+            Debug.Log("AI arrived at destination. Starting base attack.");
             IsAttackingBase = true;
-            IsAttackingBaseTask = false; // Prevents re-triggering
+            IsAttackingBaseTask = false;
 
-            if (AttackingTaskCoroutine != null)
-            {
-                StopCoroutine(AttackingTaskCoroutine);
-                AttackingTaskCoroutine = StartCoroutine(AttackBaseCoroutine(ClickManager.Instance.GetLastClickedObject()));
-            }
+            if (AttackingTaskCoroutine != null) StopCoroutine(AttackingTaskCoroutine);
+            IsAttackingBaseCoroutineRunning = true;
             AttackingTaskCoroutine = StartCoroutine(AttackBaseCoroutine(ClickManager.Instance.GetLastClickedObject()));
         }
-        // // If the AI is still set to attacking but the enemy base is already gone, navigate back home.
-        // else if (IsAttackingBaseTask && ClickManager.Instance.GetLastClickedObject() == null)
-        // {
-        //     NavigateToTarget(HomeBasePosition);
-        // }
 
-        // AGGRO AND POSITION CHECK FOR ATTACKING ENEMY UNITS
-        if (IsAggressive && !agent.pathPending && agent.remainingDistance <= AttackRange)
+        // AGGRO CHECK: fight enemies encountered en route OR while returning home
+        // BUG A FIX: Removed !IsAttackingBase check from here — the guard is now inside
+        // DetectEnemy() itself, which only blocks interruption when already mid-assault
+        // (IsAttackingBase=true), not during travel (IsAttackingBaseTask=true).
+        if (IsAggressive && !agent.pathPending
+            && agent.remainingDistance <= AttackRange
+            && !IsAttackingEnemyCoroutineRunning
+            && !IsAttackingBase)
         {
-            Debug.Log("AI attacking enemy.");
-
-            if (AttackEnemyCoroutine != null)
-            {
-                StopCoroutine(AttackEnemyCoroutine);
-                AttackEnemyCoroutine = StartCoroutine(AttackEnemyAICoroutine(EnemyUnitTarget));
-            }
+            Debug.Log("AI attacking enemy unit.");
+            if (AttackEnemyCoroutine != null) StopCoroutine(AttackEnemyCoroutine);
+            IsAttackingEnemyCoroutineRunning = true;
             AttackEnemyCoroutine = StartCoroutine(AttackEnemyAICoroutine(EnemyUnitTarget));
         }
 
-        // Return home from a task.
-        if (IsReturningHomeTask && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+        // RETURN HOME CHECK
+        if (IsReturningHomeTask && !agent.pathPending
+            && agent.remainingDistance <= agent.stoppingDistance
+            && !IsReturningHomeCoroutineRunning)
         {
-            if (ReturnHomeCoroutine != null)
-            {
-                StopCoroutine(ReturnHomeCoroutine);
-                ReturnHomeCoroutine = StartCoroutine(ReturningHomeCoroutine());
-            }
+            if (ReturnHomeCoroutine != null) StopCoroutine(ReturnHomeCoroutine);
+            IsReturningHomeCoroutineRunning = true;
             ReturnHomeCoroutine = StartCoroutine(ReturningHomeCoroutine());
-            Debug.Log("Returning home.");
         }
     }
 
     public void NavigateToTarget(Vector3 targetPosition)
     {
-        if (targetPosition != null)
-        {
-            Debug.Log("Navigating to target: " + targetPosition);
-
-            agent.destination = targetPosition;
-            agent.SetDestination(targetPosition);
-        }
-        else
-        {
-            Debug.Log("Received value is null.");
-        }
+        Debug.Log("Navigating to target: " + targetPosition);
+        agent.destination = targetPosition;
+        agent.SetDestination(targetPosition);
     }
 
     public void ReturnHome()
     {
         agent.destination = HomeBasePosition;
         IsReturningHomeTask = true;
+        IsReturningHomeCoroutineRunning = false;
         NavigateToTarget(HomeBasePosition);
         Debug.Log("Returning home.");
     }
 
     public void DetectEnemy(GameObject TargetUnit)
     {
-        // Save previous task state
+        // BUG A FIX: Only block on IsAttackingBase (mid-assault), NOT IsAttackingBaseTask
+        // (still travelling). This lets units fight enemies they pass through on the way
+        // to the base, while still protecting an ongoing base-damage loop from interruption.
+        if (IsAttackingBase)
+        {
+            return;
+        }
+
         if (IsGatheringTask || IsGathering)
         {
             wasGathering = true;
             IsGatheringTask = false;
             IsGathering = false;
+            IsGatheringCoroutineRunning = false;
             if (GatheringCoroutine != null)
             {
                 StopCoroutine(GatheringCoroutine);
                 GatheringCoroutine = null;
             }
         }
-        if (IsAttackingBaseTask || IsAttackingBase)
+
+        if (IsAttackingBaseTask)
         {
+            // Save the base attack task so we resume it after the skirmish
             wasAttackingBase = true;
-            IsAttackingBaseTask = false;
-            IsAttackingBase = false;
-            if (AttackingTaskCoroutine != null)
-            {
-                StopCoroutine(AttackingTaskCoroutine);
-                AttackingTaskCoroutine = null;
-            }
+            attackingBaseTarget = ClickManager.Instance.GetLastClickedObject();
         }
 
-        // STOP ALL BEHAVIORS
         IsAggressive = true;
         agent.destination = TargetUnit.transform.position;
         EnemyUnitTarget = TargetUnit;
@@ -204,13 +181,16 @@ public class AIBehavior : MonoBehaviour
 
     public void StopDetectEnemy()
     {
+        // Only run cleanup if we were actually aggressive (prevents 60x/sec spam from AIAgression)
+        if (!IsAggressive) return;
+
         IsAggressive = false;
         IsAttackingEnemy = false;
         IsAttackingEnemyTask = false;
+        IsAttackingEnemyCoroutineRunning = false;
         Debug.Log("AI no longer detects enemy.");
 
-        // Resume previous task if not currently attacking an enemy
-        if (!IsAttackingEnemy)
+        if (AIAgressionScript.ReturnEnemyUnitsHit() <= 0 && !IsAttackingEnemy)
         {
             ResumePreviousTask();
         }
@@ -221,6 +201,7 @@ public class AIBehavior : MonoBehaviour
         gatheringTarget = targetPosition;
         agent.destination = targetPosition;
         IsGatheringTask = true;
+        IsGatheringCoroutineRunning = false;
         NavigateToTarget(targetPosition);
         Debug.Log("Starting to gather resources at: " + targetPosition);
     }
@@ -230,8 +211,9 @@ public class AIBehavior : MonoBehaviour
         attackingBaseTarget = ClickManager.Instance.GetLastClickedObject();
         agent.destination = targetPosition;
         IsAttackingBaseTask = true;
+        IsAttackingBaseCoroutineRunning = false;
         NavigateToTarget(targetPosition);
-        Debug.Log("Attacking at: " + targetPosition);
+        Debug.Log("Attacking base at: " + targetPosition);
     }
 
     private void ResumePreviousTask()
@@ -240,23 +222,34 @@ public class AIBehavior : MonoBehaviour
         {
             wasGathering = false;
             IsGatheringTask = true;
+            IsGatheringCoroutineRunning = false;
             agent.destination = gatheringTarget;
             Debug.Log("Resuming gathering.");
         }
         else if (wasAttackingBase)
         {
             wasAttackingBase = false;
-            IsAttackingBaseTask = true;
-            if (attackingBaseTarget != null)
+            if (attackingBaseTarget != null
+                && attackingBaseTarget.GetComponent<EnemyBaseManager>() != null
+                && attackingBaseTarget.GetComponent<EnemyBaseManager>().IsBaseAlive)
             {
+                IsAttackingBaseTask = true;
+                IsAttackingBaseCoroutineRunning = false;
                 agent.destination = attackingBaseTarget.transform.position;
                 Debug.Log("Resuming attacking base.");
+            }
+            else
+            {
+                ReturnHome();
+                Debug.Log("Cannot resume attacking base, returning home.");
             }
         }
     }
 
     IEnumerator ReturningHomeCoroutine()
     {
+        yield return null; // Let remainingDistance update after pathfinding
+
         if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
         {
             BaseBehavior.Instance.BaseUnits++;
@@ -265,99 +258,135 @@ public class AIBehavior : MonoBehaviour
             IsReturningHome = false;
             IsReturningHomeTask = false;
             IsPerformingTask = false;
+            IsReturningHomeCoroutineRunning = false;
 
             yield return new WaitForEndOfFrame();
-
             Destroy(gameObject);
+        }
+        else
+        {
+            // Not there yet — reset guard so Update() can retry next frame
+            IsReturningHomeCoroutineRunning = false;
         }
     }
 
     IEnumerator AttackBaseCoroutine(GameObject target)
     {
-        IsAttackingBaseCoroutineRunning = true;
-
-        if (target != null)
+        if (target != null && target.GetComponent<EnemyBaseManager>() != null)
         {
-            if (target.GetComponent<EnemyBaseManager>() != null)
-            {
-                EnemyBaseManager enemyBase = target.GetComponent<EnemyBaseManager>();
-                float elapsed = 0f;
-                float nextAttackTime = AttackRate;
+            EnemyBaseManager enemyBase = target.GetComponent<EnemyBaseManager>();
+            float elapsed = 0f;
+            float nextAttackTime = AttackRate;
 
-                while (enemyBase.IsBaseAlive)
+            while (enemyBase != null && enemyBase.IsBaseAlive)
+            {
+                elapsed += Time.deltaTime;
+
+                // BUG FIX: Check distance before attacking - units should only damage when close enough
+                float distanceToBase = Vector3.Distance(transform.position, target.transform.position);
+                if (distanceToBase > AttackRange + 5f)  // Add buffer to account for stopping distance
                 {
-                    elapsed += Time.deltaTime;
-
-                    if (elapsed >= nextAttackTime)
-                    {
-                        enemyBase.ReduceHealth(AttackDamage);
-                        nextAttackTime += AttackRate;
-                        Debug.Log($"Unit attacked at: {elapsed:0.00}s, next attack at {nextAttackTime:0.00}s");
-                    }
+                    // Too far - move closer instead of attacking
+                    agent.SetDestination(target.transform.position);
                     yield return null;
+                    continue;
                 }
-            }
 
-            IsAttackingBase = false;
-            IsPerformingTask = false;
-            IsAttackingBaseTask = false;
-            IsAttackingBaseCoroutineRunning = false;
-            Debug.Log("Attacking complete.");
-
-            if (HomeBase != null)
-            {
-                ReturnHome();
+                if (elapsed >= nextAttackTime)
+                {
+                    enemyBase.ReduceHealth(AttackDamage);
+                    nextAttackTime += AttackRate;
+                    Debug.Log($"Unit attacked base at: {elapsed:0.00}s, next at {nextAttackTime:0.00}s");
+                }
+                yield return null;
             }
         }
+
+        IsAttackingBase = false;
+        IsPerformingTask = false;
+        IsAttackingBaseTask = false;
+        IsAttackingBaseCoroutineRunning = false;
+        Debug.Log("Base attack complete.");
+
+        if (HomeBase != null) ReturnHome();
     }
 
     IEnumerator AttackEnemyAICoroutine(GameObject target)
     {
-        if (target.GetComponent<EnemyUnitAI>() != null)
+        // BUG C FIX: Cache the component reference immediately and use Unity's overloaded
+        // == null check (which catches destroyed GameObjects, not just C# null).
+        // Previously, target != null was true even on the frame Unity called Destroy(),
+        // causing GetComponent<>() and Health access to throw MissingReferenceException.
+        if (target == null)
         {
-            IsPerformingTask = true;
-            EnemyUnitAI enemyUnit = target.GetComponent<EnemyUnitAI>();
+            CleanupEnemyAttack();
+            yield break;
+        }
 
-            float elapsed = 0f;
-            float nextAttackTime = AttackRate;
+        EnemyUnitAI enemyUnit = target.GetComponent<EnemyUnitAI>();
+        if (enemyUnit == null)
+        {
+            Debug.Log("Target has no EnemyUnitAI.");
+            CleanupEnemyAttack();
+            yield break;
+        }
 
-            while (enemyUnit.Health > 0)
+        float elapsed = 0f;
+        float nextAttackTime = AttackRate;
+
+        while (true)
+        {
+            // BUG C FIX: Unity's == null correctly detects destroyed objects here.
+            // We check this at the TOP of each loop iteration, before any access.
+            if (target == null || enemyUnit == null || enemyUnit.Health <= 0)
             {
-                elapsed += Time.deltaTime;
+                break;
+            }
 
-                if (elapsed >= nextAttackTime)
+            elapsed += Time.deltaTime;
+
+            if (elapsed >= nextAttackTime)
+            {
+                // BUG C + BUG B FIX: Re-check right before dealing damage. Because multiple
+                // player units each run their own coroutine against the same enemy (before
+                // AIAgression's target-locking spreads them out), one unit may have already
+                // killed the target between this frame's yield and this damage call.
+                if (target != null && enemyUnit != null && enemyUnit.Health > 0)
                 {
                     enemyUnit.TakeDamage(AttackDamage);
-                    nextAttackTime += AttackRate;
-                    Debug.Log($"Unit attacked enemy at: {elapsed:0.00}s, next attack at {nextAttackTime:0.00}s");
                 }
-                agent.destination = target.transform.position;
-                yield return null;
+                nextAttackTime += AttackRate;
             }
-        }
-        else
-        {
-            Debug.Log("Target has no EnemyUnitAI script.");
-            IsAttackingEnemy = false;
-            IsPerformingTask = false;
-            IsAttackingEnemyTask = false;
-            IsAggressive = false; // Enemy defeated, no longer aggressive
+
+            if (target != null)
+            {
+                agent.destination = target.transform.position;
+            }
+
+            yield return null;
         }
 
-        IsAttackingEnemy = false;
-        IsPerformingTask = false;
-        IsAttackingEnemyTask = false;
-        IsAggressive = false; // Enemy defeated, no longer aggressive
-        Debug.Log("Attacking enemy complete.");
-
-        // Resume previous task
+        Debug.Log("Enemy unit attack complete.");
+        CleanupEnemyAttack();
         ResumePreviousTask();
+    }
+
+    /// <summary>
+    /// Resets all enemy-combat state flags. Does NOT touch IsPerformingTask —
+    /// enemy combat is an interruption, not the primary task.
+    /// </summary>
+    private void CleanupEnemyAttack()
+    {
+        IsAttackingEnemy = false;
+        IsAttackingEnemyTask = false;
+        IsAttackingEnemyCoroutineRunning = false;
+        IsAggressive = false;
     }
 
     IEnumerator GatherResourcesCoroutine()
     {
         float elapsed = 0f;
-        float nextGatherTime = GatheringRate; // first gather after GatheringRate seconds
+        float nextGatherTime = GatheringRate;
 
         while (elapsed < GatheringDurationInSeconds)
         {
@@ -365,7 +394,6 @@ public class AIBehavior : MonoBehaviour
 
             if (elapsed >= nextGatherTime)
             {
-                // gather once
                 BaseBehavior.Instance.WoodResourceCount += 1;
                 BaseBehavior.Instance.SteelResourceCount += 1;
                 BaseBehavior.Instance.FoodResourceCount += 1;
@@ -378,14 +406,12 @@ public class AIBehavior : MonoBehaviour
             yield return null;
         }
 
-        // done collecting
         IsGathering = false;
         IsPerformingTask = false;
         IsGatheringTask = false;
+        IsGatheringCoroutineRunning = false;
         Debug.Log("Gathering complete.");
 
-        // return home
         if (HomeBase != null) ReturnHome();
     }
 }
-
