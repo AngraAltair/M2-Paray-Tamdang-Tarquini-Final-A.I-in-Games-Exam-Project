@@ -8,6 +8,7 @@ public class ClickManager : MonoBehaviour
         get { return instance; }
     }
     public Camera mainCamera;
+    public bool CanReceiveInput {get;set;} = true;
     private string LastClickedObjectTag;
     private Vector3 lastClickedPosition;
     private GameObject LastClickedObject;
@@ -40,7 +41,7 @@ public class ClickManager : MonoBehaviour
     {
         Debug.Log("Last Clicked Position (of important item): " + lastClickedPosition);
         
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && CanReceiveInput)
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 

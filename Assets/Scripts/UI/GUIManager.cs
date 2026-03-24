@@ -55,6 +55,7 @@ public class GUIManager : MonoBehaviour
         if (UnitUI != null)
         {
             UnitUI.SetActive(true);
+            ClickManager.Instance.CanReceiveInput = false;
         }
     }
 
@@ -63,6 +64,7 @@ public class GUIManager : MonoBehaviour
         if (UnitUI != null)
         {
             UnitUI.SetActive(false);
+            ClickManager.Instance.CanReceiveInput = true;
         }
     }
 

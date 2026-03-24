@@ -19,6 +19,8 @@ public class EnemyBaseManager : MonoBehaviour
             IsBaseAlive = false;
             Destroy(gameObject);
         }
+
+        Debug.Log("Enemy Base Health: " + Health);
     }
 
     public void ReduceHealth(float AttackDamage)

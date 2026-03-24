@@ -6,7 +6,7 @@ public class EnemyUnitAI : MonoBehaviour
 {
     private NavMeshAgent agent;
 
-    public float Health = 5f;
+    public float Health {get;set;} = 2f;
     public float WalkSpeed = 15f;
     // private GameObject baseTarget;
 
@@ -26,7 +26,28 @@ public class EnemyUnitAI : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Health <= 0)
+        {
+            Destroy(gameObject);
+        }
 
+    }
+
+    public void PauseMovement()
+    {
+        agent.isStopped = true;
+    }
+
+    public void ResumeMovement()
+    {
+        agent.isStopped = false;
+    }
+
+    public void TakeDamage(float AttackDamage)
+    {
+        PauseMovement();
+        Debug.Log("Enemy taking damage of: " + AttackDamage);
+        Health -= AttackDamage;
     }
 
     public void NavigateToTarget(Vector3 targetPosition)

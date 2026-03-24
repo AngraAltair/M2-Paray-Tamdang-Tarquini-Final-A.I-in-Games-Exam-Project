@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class BaseBehavior : MonoBehaviour
@@ -47,7 +46,8 @@ public class BaseBehavior : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Debug.Log("Units in Base:" + BaseUnits);
+        Debug.Log("Active and Idle Units: " + ReturnCurrentlyActiveAndIdleUnits());
+        // Debug.Log("Units in Base:" + BaseUnits);
 
         // Debug.Log(SpawnedInUnits.Count);
 
@@ -114,10 +114,9 @@ public class BaseBehavior : MonoBehaviour
                         break;
                     case "Attack":
                         child.GetComponent<AIBehavior>().IsPerformingTask = true;
-                        child.GetComponent<AIBehavior>().AttackEnemy(ClickManager.Instance.GetLastClickedPosition());
+                        child.GetComponent<AIBehavior>().AttackBase(ClickManager.Instance.GetLastClickedPosition());
                         break;
                     default:
-                        // UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().IsPerformingTask = true;
                         UnitParent.transform.GetChild(i).GetComponent<AIBehavior>().NavigateToTarget(ClickManager.Instance.GetLastClickedPosition());
                         break;
                 }
