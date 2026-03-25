@@ -4,6 +4,7 @@ public class Enemy : MonoBehaviour
 {
     private float unitHealth;
     public float unitMaxHealth;
+    public int goldReward = 10;
 
     public HealthTracker healthTracker;
 
@@ -19,6 +20,7 @@ public class Enemy : MonoBehaviour
     private void OnDestroy()
     {
         // UnitSelectionManager.Instance.allUnitsList.Remove(gameObject);
+        ResourceManager.Instance.AddMoney(goldReward);
     }
 
     private void UpdateHealthUI()
