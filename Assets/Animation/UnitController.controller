@@ -65,7 +65,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f2f86ce5c2c61b548a5f3a3e953d5957, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stopAttackingDistance: 1.2
+  stopAttackingDistance: 80
 --- !u!1107 &-2164094121625999188
 AnimatorStateMachine:
   serializedVersion: 6
@@ -211,7 +211,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f64de54d7c9c6d45a3d273ff996a9d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackingDistance: 1
+  attackingDistance: 60
 --- !u!1101 &3500102813763276000
 AnimatorStateTransition:
   m_ObjectHideFlags: 1
