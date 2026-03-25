@@ -121,7 +121,7 @@ GameObject:
   - component: {fileID: 812739293119681494}
   - component: {fileID: 3182026411911183335}
   - component: {fileID: 3163656972190244808}
-  - component: {fileID: 5221165310279826309}
+  - component: {fileID: 5331401819504517858}
   - component: {fileID: 5127582680301480565}
   - component: {fileID: 3834395715463387558}
   - component: {fileID: 8501380488796796747}
@@ -262,7 +262,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   isCommandedToMove: 0
---- !u!114 &5221165310279826309
+--- !u!114 &5331401819504517858
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -271,10 +271,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6313494586257089834}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8e99be9990929ee48a2238c3de12be18, type: 3}
+  m_Script: {fileID: 11500000, guid: 98f27dc234207d849a26750566da9aff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  unitMaxHealth: 45
+  unitMaxHealth: 20
   healthTracker: {fileID: 5436652217344958374}
 --- !u!114 &5127582680301480565
 MonoBehaviour:
