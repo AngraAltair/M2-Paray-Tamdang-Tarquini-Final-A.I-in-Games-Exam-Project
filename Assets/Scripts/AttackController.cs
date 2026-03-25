@@ -9,6 +9,7 @@ public class AttackController : MonoBehaviour
     public Material idleStateMaterial;
     public Material followStateMaterial;
     public Material attackStateMaterial;
+    public int unitDamage;
 
     void OnTriggerEnter(Collider other)
     {
