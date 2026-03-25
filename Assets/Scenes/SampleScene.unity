@@ -5724,20 +5724,8 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 276750924270447306, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
-      propertyPath: m_Speed
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 276750924270447306, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
       propertyPath: m_Radius
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 276750924270447306, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
-      propertyPath: m_Acceleration
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 276750924270447306, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
-      propertyPath: m_StoppingDistance
-      value: 60
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 322430758914793833, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
       propertyPath: m_Name
@@ -5783,9 +5771,21 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 8235667608820550430, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
-      propertyPath: m_IsActive
-      value: 0
+    - target: {fileID: 5952872754351999866, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
+      propertyPath: idleStateMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: bc2d55537ea867a409a08b1790eb6644, type: 2}
+    - target: {fileID: 5952872754351999866, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
+      propertyPath: attackStateMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: 61d2174db606ed046a52c2b46e3359f5, type: 2}
+    - target: {fileID: 5952872754351999866, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
+      propertyPath: followStateMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: 9b49892a2df020c4886c9f7340a9b9e2, type: 2}
+    - target: {fileID: 6754065646801059808, guid: 31e7a5dfedab400419cfaf374aac1275, type: 3}
+      propertyPath: m_Radius
+      value: 4
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
