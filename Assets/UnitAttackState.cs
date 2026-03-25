@@ -54,7 +54,7 @@ public class UnitAttackState : StateMachineBehaviour
     {   
         var damageToInflict = attackController.unitDamage;
         // Actually attack unit
-        attackController.targetToAttack.GetComponent<Unit>().TakeDamage(damageToInflict);
+        attackController.targetToAttack.GetComponent<Enemy>().TakeDamage(damageToInflict);
     }
 
     private void LookAtTarget()
