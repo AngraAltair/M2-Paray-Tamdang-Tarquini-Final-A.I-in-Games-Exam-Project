@@ -10,11 +10,11 @@ public class Enemy : MonoBehaviour
     public HealthTracker healthTracker;
     private AudioSource audioSource;
 
+    [Range(0f, 1f)]
+    public float deathSoundVolume = 0.5f;
 
     void Start()
     {
-        // UnitSelectionManager.Instance.allUnitsList.Add(gameObject);
-
         unitHealth = unitMaxHealth;
         audioSource = GetComponent<AudioSource>();
         UpdateHealthUI();
@@ -31,6 +31,7 @@ public class Enemy : MonoBehaviour
 
         if (unitHealth <= 0)
         {
+            AudioManager.Instance?.PlayEnemyDeathSound(deathSoundVolume);
             ResourceManager.Instance.EnemyDefeated(goldReward);
             Destroy(gameObject);
         }
