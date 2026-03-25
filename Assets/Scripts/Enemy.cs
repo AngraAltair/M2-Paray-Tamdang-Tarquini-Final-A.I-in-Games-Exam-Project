@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[RequireComponent(typeof(AudioSource))]
 public class Enemy : MonoBehaviour
 {
     private float unitHealth;
@@ -7,6 +8,7 @@ public class Enemy : MonoBehaviour
     public int goldReward = 10;
 
     public HealthTracker healthTracker;
+    private AudioSource audioSource;
 
 
     void Start()
@@ -14,13 +16,13 @@ public class Enemy : MonoBehaviour
         // UnitSelectionManager.Instance.allUnitsList.Add(gameObject);
 
         unitHealth = unitMaxHealth;
+        audioSource = GetComponent<AudioSource>();
         UpdateHealthUI();
     }
 
     private void OnDestroy()
     {
         // UnitSelectionManager.Instance.allUnitsList.Remove(gameObject);
-        // ResourceManager.Instance.AddMoney(goldReward);
     }
 
     private void UpdateHealthUI()
@@ -29,7 +31,7 @@ public class Enemy : MonoBehaviour
 
         if (unitHealth <= 0)
         {
-
+            ResourceManager.Instance.EnemyDefeated(goldReward);
             Destroy(gameObject);
         }
     }

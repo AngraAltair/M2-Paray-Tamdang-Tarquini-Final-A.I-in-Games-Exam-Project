@@ -8,7 +8,7 @@ public class Coin : MonoBehaviour
     {
         if (other.gameObject.CompareTag("Player"))
         {
-            ResourceManager.Instance.AddMoney(goldWorth);
+            ResourceManager.Instance.CoinCollected(goldWorth);
             Destroy(gameObject);
         }
     }

@@ -3,10 +3,9 @@ using UnityEngine;
 public class SimplePatrol : MonoBehaviour
 {
     public float speed = 5.0f; // Adjust the speed of movement
+    public float switchDirectionTime = 20.0f; // Time to switch direction
  
-    private bool movingForward = true;
     private float timer = 0.0f;
-    private float switchDirectionTime = 5.0f; // Time to switch direction
  
     void Update()
     {
@@ -14,17 +13,10 @@ public class SimplePatrol : MonoBehaviour
  
         if (timer >= switchDirectionTime)
         {
-            movingForward = !movingForward;
+            transform.Rotate(Vector3.up, 180f);
             timer = 0.0f;
         }
  
-        if (movingForward)
-        {
-            transform.Translate(Vector3.forward * speed * Time.deltaTime);
-        }
-        else
-        {
-            transform.Translate(Vector3.back * speed * Time.deltaTime);
-        }
+        transform.Translate(Vector3.forward * speed * Time.deltaTime);
     }
 }
