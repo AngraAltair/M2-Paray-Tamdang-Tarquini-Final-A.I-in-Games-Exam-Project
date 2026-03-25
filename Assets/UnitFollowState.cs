@@ -18,32 +18,31 @@ public class UnitFollowState : StateMachineBehaviour
 
     }
 
-    // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
     override public void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        float distanceFromTarget = Vector3.Distance(attackController.targetToAttack.position, animator.transform.position);
-        Debug.Log("Distance from target: " + distanceFromTarget);
-        ///Should unit transition to Idle state?
+        // Guard clause FIRST — before touching targetToAttack at all
         if (attackController.targetToAttack == null)
         {
             animator.SetBool("isFollowing", false);
+            return;
         }
-        else
-        {
-            // If there is no command to move
-            if (animator.transform.GetComponent<UnitMovement>().isCommandedToMove == false)
-            {
-                ///Moving Unit towards enemy
-                agent.SetDestination(attackController.targetToAttack.position);
-                animator.transform.LookAt(attackController.targetToAttack);
 
-                ///Should unit transition to Attack state?
-                distanceFromTarget = Vector3.Distance(attackController.targetToAttack.position, animator.transform.position);
-                if (distanceFromTarget < attackingDistance)
-                {
-                    agent.SetDestination(animator.transform.position);
-                    animator.SetBool("isAttacking", true);
-                }
+        float distanceFromTarget = Vector3.Distance(attackController.targetToAttack.position, animator.transform.position);
+        Debug.Log("Distance from target: " + distanceFromTarget);
+
+        // If there is no command to move
+        if (animator.transform.GetComponent<UnitMovement>().isCommandedToMove == false)
+        {
+            // Moving unit towards enemy
+            agent.SetDestination(attackController.targetToAttack.position);
+            animator.transform.LookAt(attackController.targetToAttack);
+
+            // Should unit transition to Attack state?
+            distanceFromTarget = Vector3.Distance(attackController.targetToAttack.position, animator.transform.position);
+            if (distanceFromTarget < attackingDistance)
+            {
+                agent.SetDestination(animator.transform.position);
+                animator.SetBool("isAttacking", true);
             }
         }
     }
