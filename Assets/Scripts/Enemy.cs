@@ -20,7 +20,7 @@ public class Enemy : MonoBehaviour
     private void OnDestroy()
     {
         // UnitSelectionManager.Instance.allUnitsList.Remove(gameObject);
-        ResourceManager.Instance.AddMoney(goldReward);
+        // ResourceManager.Instance.AddMoney(goldReward);
     }
 
     private void UpdateHealthUI()
