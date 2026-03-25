@@ -24,34 +24,41 @@ public class UnitFollowState : StateMachineBehaviour
         {
             animator.SetBool("isFollowing", false);
         }
+        else
+        {
+            // If there is no command to move
+            if (animator.transform.GetComponent<UnitMovement>().isCommandedToMove == false)
+            {
+                ///Moving Unit towards enemy
+                agent.SetDestination(attackController.targetToAttack.position);
+                animator.transform.LookAt(attackController.targetToAttack);
 
-        ///Moving Unit towards enemy
-        agent.SetDestination(attackController.targetToAttack.position);
-        animator.transform.LookAt(attackController.targetToAttack);
-
-        ///Should unit transition to Attack state?
-        // float distanceFromTarget = Vector3.Distance(attackController.targetToAttack.position, animator.transform.position);
-        // if (distanceFromTarget < attackingDistance)
-        // {
-        //     animator.SetBool("isAttacking", true);
-        // }
+                ///Should unit transition to Attack state?
+                // float distanceFromTarget = Vector3.Distance(attackController.targetToAttack.position, animator.transform.position);
+                // if (distanceFromTarget < attackingDistance)
+                // {
+                //      agent.SetDestination(animator.transform.position);
+                //     animator.SetBool("isAttacking", true);
+                // }
+            }
+        }
     }
 
     // OnStateExit is called when a transition ends and the state machine finishes evaluating this state
     override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        agent.SetDestination(animator.transform.position);
+
+
+        // OnStateMove is called right after Animator.OnAnimatorMove()
+        //override public void OnStateMove(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
+        //{
+        //    // Implement code that processes and affects root motion
+        //}
+
+        // OnStateIK is called right after Animator.OnAnimatorIK()
+        //override public void OnStateIK(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
+        //{
+        //    // Implement code that sets up animation IK (inverse kinematics)
+        //}
     }
-
-    // OnStateMove is called right after Animator.OnAnimatorMove()
-    //override public void OnStateMove(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
-    //{
-    //    // Implement code that processes and affects root motion
-    //}
-
-    // OnStateIK is called right after Animator.OnAnimatorIK()
-    //override public void OnStateIK(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
-    //{
-    //    // Implement code that sets up animation IK (inverse kinematics)
-    //}
 }
